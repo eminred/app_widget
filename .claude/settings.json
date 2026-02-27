@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Read(//usr/local/**)",
-      "Bash(echo $PATH)"
+      "Bash(echo $PATH)",
+      "Bash(git config --global user.name)",
+      "Bash(git config --global user.email)",
+      "Bash(gh auth status)"
     ]
   }
 }

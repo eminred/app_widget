@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Plus, Trash2, FileCode2, Zap } from "lucide-react"
+import { Plus, Trash2, FileCode2, Zap, Loader2 } from "lucide-react"
+import { sendToWebhook } from "@/lib/webhook"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -34,6 +35,8 @@ export default function IntegrationRequirementsWidget() {
   const [useCases, setUseCases] = useState<UseCase[]>([
     { id: crypto.randomUUID(), title: "", description: "" },
   ])
+  const [isLoading, setIsLoading] = useState(false)
+  const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
   const addUseCase = () => {
     setUseCases([
@@ -57,12 +60,28 @@ export default function IntegrationRequirementsWidget() {
     )
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const requirements: IntegrationRequirements = {
       apiDocumentation: { content: apiContent, url: apiUrl },
       useCases,
     }
-    console.log("Integration Requirements:", requirements)
+
+    setIsLoading(true)
+    setStatus(null)
+
+    const payload = {
+      ...requirements,
+      useCasesText: useCases.map(({ title, description }) => `${title}-${description}`).join(";"),
+    }
+
+    try {
+      await sendToWebhook(payload as unknown as Record<string, unknown>)
+      setStatus({ type: "success", message: "Integration sent successfully!" })
+    } catch (err) {
+      setStatus({ type: "error", message: err instanceof Error ? err.message : "Something went wrong." })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const filledUseCases = useCases.filter((uc) => uc.title.trim()).length
@@ -212,10 +231,24 @@ export default function IntegrationRequirementsWidget() {
           </CardContent>
         </Card>
 
+        {/* Status */}
+        {status && (
+          <div className={`rounded-lg border px-4 py-3 text-sm ${status.type === "success" ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-800"}`}>
+            {status.message}
+          </div>
+        )}
+
         {/* Submit */}
         <div className="flex justify-end">
-          <Button size="lg" onClick={handleSubmit} disabled={!hasApiDocs}>
-            Generate Integration
+          <Button size="lg" onClick={handleSubmit} disabled={!hasApiDocs || isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              "Generate Integration"
+            )}
           </Button>
         </div>
       </div>

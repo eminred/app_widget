@@ -31,3 +31,4 @@ yarn-error.log*
 
 # Trigger.dev
 .trigger/
+.vercel

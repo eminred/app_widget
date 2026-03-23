@@ -37,7 +37,6 @@ export default function IntegrationRequirementsWidget() {
   ])
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
-
   const addUseCase = () => {
     setUseCases([
       ...useCases,

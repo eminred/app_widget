@@ -10,6 +10,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiUrl = body?.apiDocumentation?.url as string | undefined
   const apiContent = body?.apiDocumentation?.content as string | undefined
   const useCasesText = body?.useCasesText as string | undefined
+  const useCases = body?.useCases as Array<{
+    id: string
+    title: string
+    description: string
+    endpoints?: Array<{ method: string; path: string; url: string; description: string }>
+  }> | undefined
 
   const token = process.env.SLACK_BOT_TOKEN
   const channel = process.env.SLACK_CHANNEL_ID
@@ -18,12 +24,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Slack credentials not configured" })
   }
 
+  let useCasesFormatted: string | null = null
+  if (useCases && useCases.length > 0) {
+    useCasesFormatted = `*Use Cases:*${useCases
+      .map((uc, i) => {
+        let line = `\n  ${i + 1}. ${uc.title} - ${uc.description}`
+        if (uc.endpoints && uc.endpoints.length > 0) {
+          const links = uc.endpoints
+            .map((ep) => `<${ep.url}|${ep.method} ${ep.path}>`)
+            .join(", ")
+          line += `. Endpoint: ${links}`
+        }
+        return line
+      })
+      .join("")}`
+  } else if (useCasesText) {
+    useCasesFormatted = `*Use Cases:*${useCasesText.split(";").map((uc: string, i: number) => `\n  ${i + 1}. ${uc}`).join("")}`
+  }
+
   const text = [
     "*New Integration Request*",
     apiUrl ? `*API URL:* ${apiUrl}` : apiContent ? `*API Docs:* (pasted content)` : null,
-    useCasesText
-      ? `*Use Cases:*${(useCasesText as string).split(";").map((uc: string, i: number) => `\n  ${i + 1}. ${uc}`).join("")}`
-      : null,
+    useCasesFormatted,
   ]
     .filter(Boolean)
     .join("\n")

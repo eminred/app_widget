@@ -32,19 +32,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "OpenAI API key not configured" })
   }
 
-  // Fetch docs content from URL if not pasted
+  // Fetch docs content from URL if not pasted (8s timeout)
   let docsContent = apiContent || ""
   if (apiUrl && !docsContent) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
     try {
       const docsRes = await fetch(apiUrl, {
         headers: { "User-Agent": "Mozilla/5.0 (compatible; IntegrationBot/1.0)" },
+        signal: controller.signal,
       })
       if (docsRes.ok) {
         const text = await docsRes.text()
-        docsContent = text.slice(0, 100000) // limit to avoid token overflow
+        docsContent = text.slice(0, 100000)
       }
     } catch (err) {
-      console.error("Failed to fetch API docs:", err)
+      console.error("Failed to fetch API docs (will proceed with URL only):", err)
+    } finally {
+      clearTimeout(timeout)
     }
   }
 
@@ -54,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const prompt = `You are an API integration specialist. Given API documentation and a list of use cases, identify the most relevant API endpoints for each use case.
 
-${apiUrl ? `API Documentation URL: ${apiUrl}` : ""}${docsContent ? `\n\nAPI Documentation Content:\n${docsContent}` : ""}
+${apiUrl ? `API Documentation URL: ${apiUrl}` : ""}${docsContent ? `\n\nAPI Documentation Content (fetched from URL):\n${docsContent}` : apiUrl ? "\n\nNote: Could not fetch the docs page. Use your knowledge of this API based on the URL above." : ""}
 
 Use Cases:
 ${useCasesText}

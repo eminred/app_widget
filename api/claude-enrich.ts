@@ -27,9 +27,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "No use cases provided" })
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    return res.status(500).json({ error: "Anthropic API key not configured" })
+    return res.status(500).json({ error: "OpenAI API key not configured" })
   }
 
   // Fetch docs content from URL if not pasted
@@ -78,31 +78,30 @@ Return ONLY valid JSON with no markdown formatting:
   ]
 }`
 
-  const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: "gpt-4o",
       max_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
     }),
   })
 
-  if (!claudeRes.ok) {
-    const err = await claudeRes.text()
-    console.error("Claude API error:", err)
-    return res.status(500).json({ error: "Claude API error" })
+  if (!openaiRes.ok) {
+    const err = await openaiRes.text()
+    console.error("OpenAI API error:", err)
+    return res.status(500).json({ error: "OpenAI API error" })
   }
 
-  const claudeData = (await claudeRes.json()) as {
-    content: Array<{ type: string; text: string }>
+  const openaiData = (await openaiRes.json()) as {
+    choices: Array<{ message: { content: string } }>
   }
 
-  const responseText = claudeData.content[0]?.text || ""
+  const responseText = openaiData.choices[0]?.message?.content || ""
 
   let enrichedMap: Record<string, Endpoint[]> = {}
   try {
